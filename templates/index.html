@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Strength Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Password Strength Analyzer</h1>
+            <p class="subtitle">Check how secure your password is</p>
+        </header>
+
+        <main>
+            <div class="analyzer-card">
+                <form id="passwordForm">
+                    <div class="form-group">
+                        <label for="password">Enter Password:</label>
+                        <div class="password-input-wrapper">
+                            <input 
+                                type="password" 
+                                id="password" 
+                                name="password"
+                                placeholder="Type your password here..."
+                                required
+                            >
+                            <button type="button" id="togglePassword" class="toggle-btn">👁️</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="analyze-btn">Analyze Password</button>
+                </form>
+
+                <!-- Results Section -->
+                <div id="results" class="results hidden">
+                    <div class="strength-meter">
+                        <div class="meter-background">
+                            <div id="meterFill" class="meter-fill"></div>
+                        </div>
+                        <p class="score-text">
+                            Score: <span id="scoreValue">0</span>/100
+                        </p>
+                    </div>
+
+                    <div class="strength-badge">
+                        <span id="strengthBadge" class="badge">Very Weak</span>
+                    </div>
+
+                    <!-- Feedback Section -->
+                    <div class="feedback-section">
+                        <h3>Feedback:</h3>
+                        <ul id="feedbackList" class="feedback-list">
+                        </ul>
+                    </div>
+
+                    <!-- Recommendations Section -->
+                    <div class="recommendations-section">
+                        <h3>Recommendations:</h3>
+                        <ul id="recommendationsList" class="recommendations-list">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="error-message hidden"></div>
+            </div>
+        </main>
+
+        <!-- Security Tips Section -->
+        <section class="security-tips">
+            <h2>🛡️ Security Tips for Strong Passwords</h2>
+            <div class="tips-grid">
+                <div class="tip-card">
+                    <h4>✅ Do's</h4>
+                    <ul>
+                        <li>Use at least 12 characters</li>
+                        <li>Mix uppercase and lowercase</li>
+                        <li>Include numbers and symbols</li>
+                        <li>Use unique passwords per account</li>
+                        <li>Change passwords regularly</li>
+                    </ul>
+                </div>
+                <div class="tip-card">
+                    <h4>❌ Don'ts</h4>
+                    <ul>
+                        <li>Share passwords with others</li>
+                        <li>Use dictionary words</li>
+                        <li>Use keyboard patterns (qwerty)</li>
+                        <li>Include personal info (birthdate)</li>
+                        <li>Reuse passwords across sites</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const form = document.getElementById('passwordForm');
+        const passwordInput = document.getElementById('password');
+        const togglePasswordBtn = document.getElementById('togglePassword');
+        const resultsDiv = document.getElementById('results');
+        const errorMessageDiv = document.getElementById('errorMessage');
+
+        // Toggle password visibility
+        togglePasswordBtn.addEventListener('click', function() {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+            togglePasswordBtn.textContent = type === 'password' ? '👁️' : '🙈';
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const password = passwordInput.value;
+            
+            if (!password) {
+                showError('Please enter a password');
+                return;
+            }
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to analyze password');
+                }
+
+                const data = await response.json();
+                displayResults(data);
+                hideError();
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('An error occurred while analyzing the password');
+            }
+        });
+
+        function displayResults(data) {
+            // Update strength meter
+            const meterFill = document.getElementById('meterFill');
+            meterFill.style.width = data.score + '%';
+            meterFill.style.backgroundColor = data.color;
+
+            // Update score
+            document.getElementById('scoreValue').textContent = data.score;
+
+            // Update strength badge
+            const badge = document.getElementById('strengthBadge');
+            badge.textContent = data.strength;
+            badge.style.backgroundColor = data.color;
+
+            // Update feedback
+            const feedbackList = document.getElementById('feedbackList');
+            feedbackList.innerHTML = '';
+            data.feedback.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                feedbackList.appendChild(li);
+            });
+
+            // Update recommendations
+            const recommendationsList = document.getElementById('recommendationsList');
+            recommendationsList.innerHTML = '';
+            data.recommendations.forEach(rec => {
+                const li = document.createElement('li');
+                li.textContent = rec;
+                recommendationsList.appendChild(li);
+            });
+
+            // Show results
+            resultsDiv.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.classList.remove('hidden');
+            resultsDiv.classList.add('hidden');
+        }
+
+        function hideError() {
+            errorMessageDiv.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
